@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Asistencias</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-800 text-white flex items-center justify-center font-sans">
+
+  <div id="login" class="bg-black/50 p-8 rounded-lg shadow-lg w-96 text-center">
+    <h1 class="text-2xl font-bold mb-6">Iniciar sesión</h1>
+    <input id="usuario" type="text" placeholder="Usuario" class="w-full mb-3 p-2 rounded text-black">
+    <input id="password" type="password" placeholder="Contraseña" class="w-full mb-4 p-2 rounded text-black">
+    <button onclick="login()" class="bg-blue-600 hover:bg-blue-700 w-full py-2 rounded font-semibold">Entrar</button>
+    <p id="mensaje" class="text-yellow-300 mt-3"></p>
+  </div>
+
+  <!-- PANEL DEL PRECEPTOR -->
+  <div id="panel-preceptor" class="hidden w-full max-w-4xl bg-black/50 p-6 rounded-lg shadow-lg">
+    <h2 class="text-2xl font-bold mb-4 text-center">Toma de Asistencias</h2>
+
+    <div class="flex justify-between mb-4">
+      <label class="font-semibold">Fecha:</label>
+      <input type="date" id="fecha" class="p-2 rounded text-black">
+    </div>
+
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-indigo-600">
+          <th class="p-2">Alumno</th>
+          <th class="p-2">Estado</th>
+        </tr>
+      </thead>
+      <tbody id="tabla-alumnos"></tbody>
+    </table>
+
+    <div class="flex justify-center mt-5">
+      <button onclick="guardarAsistencias()" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded font-semibold">Guardar Asistencias</button>
+    </div>
+
+    <div class="text-center mt-4">
+      <button onclick="cerrarSesion()" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <!-- PANEL DEL ADMIN -->
+  <div id="panel-admin" class="hidden w-full max-w-3xl bg-black/50 p-6 rounded-lg shadow-lg">
+    <h2 class="text-2xl font-bold mb-4 text-center">Reportes de Asistencia</h2>
+
+    <div class="flex justify-between mb-4">
+      <label class="font-semibold">Fecha:</label>
+      <input type="date" id="fecha-reporte" class="p-2 rounded text-black">
+      <button onclick="verReporte()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-semibold">Ver</button>
+    </div>
+
+    <table class="w-full border-collapse">
+      <thead>
+        <tr class="bg-indigo-600">
+          <th class="p-2">Alumno</th>
+          <th class="p-2">Estado</th>
+        </tr>
+      </thead>
+      <tbody id="tabla-reporte"></tbody>
+    </table>
+
+    <div class="text-center mt-4">
+      <button onclick="cerrarSesion()" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <script>
+    const alumnos = [
+      "Ana Pérez", "Juan López", "María Díaz", "Carlos Fernández", "Lucía Romero"
+    ];
+
+    function login() {
+      const usuario = document.getElementById("usuario").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const mensaje = document.getElementById("mensaje");
+
+      if (usuario === "preceptor" && password === "preceptor") {
+        mostrarPanel("preceptor");
+      } else if (usuario === "admin" && password === "admin") {
+        mostrarPanel("admin");
+      } else {
+        mensaje.textContent = "Usuario o contraseña incorrectos.";
+      }
+    }
+
+    function mostrarPanel(rol) {
+      document.getElementById("login").classList.add("hidden");
+      if (rol === "preceptor") {
+        document.getElementById("panel-preceptor").classList.remove("hidden");
+        cargarAlumnos();
+      } else {
+        document.getElementById("panel-admin").classList.remove("hidden");
+      }
+      localStorage.setItem("rolActivo", rol);
+    }
+
+    function cerrarSesion() {
+      localStorage.removeItem("rolActivo");
+      location.reload();
+    }
+
+    // ---- PRECEPTOR ----
+    function cargarAlumnos() {
+      const tabla = document.getElementById("tabla-alumnos");
+      tabla.innerHTML = "";
+      alumnos.forEach((nombre, i) => {
+        tabla.innerHTML += `
+          <tr>
+            <td class="border p-2">${nombre}</td>
+            <td class="border p-2 text-center">
+              <select id="estado-${i}" class="text-black p-1 rounded">
+                <option value="presente">Presente</option>
+                <option value="tarde">Tarde</option>
+                <option value="ausente">Ausente</option>
+              </select>
+            </td>
+          </tr>`;
+      });
+    }
+
+    function guardarAsistencias() {
+      const fecha = document.getElementById("fecha").value;
+      if (!fecha) return alert("Selecciona una fecha.");
+
+      const asistencias = alumnos.map((_, i) => document.getElementById(`estado-${i}`).value);
+      localStorage.setItem(`asistencia_${fecha}`, JSON.stringify(asistencias));
+      alert("Asistencias guardadas correctamente.");
+    }
+
+    // ---- ADMIN ----
+    function verReporte() {
+      const fecha = document.getElementById("fecha-reporte").value;
+      const tabla = document.getElementById("tabla-reporte");
+      tabla.innerHTML = "";
+
+      const datos = JSON.parse(localStorage.getItem(`asistencia_${fecha}`) || "[]");
+      if (datos.length === 0) {
+        tabla.innerHTML = `<tr><td colspan="2" class="p-3 text-center">No hay datos para esta fecha.</td></tr>`;
+        return;
+      }
+
+      alumnos.forEach((nombre, i) => {
+        let color = datos[i] === "presente" ? "text-green-400"
+                   : datos[i] === "tarde" ? "text-yellow-400"
+                   : "text-red-400";
+        tabla.innerHTML += `
+          <tr>
+            <td class="border p-2">${nombre}</td>
+            <td class="border p-2 text-center ${color} font-semibold capitalize">${datos[i]}</td>
+          </tr>`;
+      });
+    }
+
+    // Mantener sesión activa
+    const rol = localStorage.getItem("rolActivo");
+    if (rol === "preceptor") mostrarPanel("preceptor");
+    if (rol === "admin") mostrarPanel("admin");
+  </script>
+</body>
+</html>
